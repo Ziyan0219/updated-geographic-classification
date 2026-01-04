@@ -24,3 +24,7 @@
 - [ ] Export results to PDF/CSV
 - [ ] User authentication for saved analyses
 - [ ] Batch processing for multiple articles
+
+
+## Bug Fixes
+- [x] Fix API mutation error "Failed to analyze text" - Added detailed logging and improved error handling

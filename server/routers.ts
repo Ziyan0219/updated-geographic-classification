@@ -59,24 +59,49 @@ export const appRouter = router({
           // Parse SSE format response
           const lines = response.data.split('\n').filter((line: string) => line.trim());
           let markdownContent = '';
+          let apiError: string | null = null;
+
+          console.log('[Geographic API] Parsing response, total lines:', lines.length);
 
           for (const line of lines) {
             if (line.startsWith('data:')) {
               const jsonStr = line.substring(5).trim();
               try {
                 const data = JSON.parse(jsonStr);
+                console.log('[Geographic API] Event type:', data.type);
+                
+                // Check for error in message_end
+                if (data.type === 'message_end' && data.content?.message_end) {
+                  const endData = data.content.message_end;
+                  if (endData.code && endData.code !== '0' && endData.code !== '200') {
+                    apiError = `API Error (${endData.code}): ${endData.message || 'Unknown error'}`;
+                    console.error('[Geographic API]', apiError);
+                  }
+                }
+                
+                // Extract answer content
                 if (data.type === 'answer' && data.content && data.content.answer) {
                   markdownContent += data.content.answer;
+                  console.log('[Geographic API] Accumulated markdown length:', markdownContent.length);
                 }
               } catch (e) {
+                console.warn('[Geographic API] Failed to parse JSON line:', jsonStr.substring(0, 100));
                 continue;
               }
             }
           }
 
-          if (!markdownContent) {
-            throw new Error('No valid response content received from API');
+          // If there's an API error, throw it
+          if (apiError) {
+            throw new Error(apiError);
           }
+
+          if (!markdownContent) {
+            console.error('[Geographic API] No markdown content extracted from response');
+            throw new Error('No valid response content received from API. The service may be temporarily unavailable.');
+          }
+
+          console.log('[Geographic API] Successfully extracted markdown, length:', markdownContent.length);
 
           // Parse markdown response
           const parsedLines = markdownContent.split('\n');
